@@ -52,6 +52,11 @@ abstract class Jelly_Core_Pagination_Table_Adapter
      */
     protected $_action = array();
 
+    /**
+     * Current route object
+     * @var \Route
+     */
+    protected $_route;
 
     /**
      * Setup adapter
@@ -59,7 +64,7 @@ abstract class Jelly_Core_Pagination_Table_Adapter
      * @param Jelly_Builder $source
      * @param array $config pagination config
      */
-    public function __construct(Jelly_Builder $source, array $config)
+    public function __construct(Jelly_Builder $source, array $config = null)
     {
         $this->_target = new Pagination(array(
             'total_items' => $source->select()->count(),
@@ -83,6 +88,13 @@ abstract class Jelly_Core_Pagination_Table_Adapter
 
         if (!is_null($this->_sort_column))
             $this->_source->order_by($this->_sort_column, $order_how);
+        
+        
+        // Get the current route name
+        $current_route = Route::name(Request::initial()->route());
+
+        //Current route
+        $this->_route = Route::get($current_route);
     }
 
     /**
@@ -90,11 +102,7 @@ abstract class Jelly_Core_Pagination_Table_Adapter
      */
     public function sort(Jelly_Field $column, $foreign = null)
     {
-        // Get the current route name
-        $current_route = Route::name(Request::initial()->route());
-
-        //Current uri
-        $uri = Route::get($current_route)->uri($this->_target->route_params());
+        
 
         //Current page
         $page = $this->_target->request()->query($this->_config['current_page']['key']);
@@ -128,8 +136,10 @@ abstract class Jelly_Core_Pagination_Table_Adapter
             $class = 'text-success';
         }
 
-        return HTML::anchor($uri . URL::query($params), $column->label . $arrow, array('class' => $class));
+        return HTML::anchor($this->_route->uri($this->_target->route_params()) . URL::query($params), $column->label . $arrow, array('class' => $class));
     }
+    
+
 
     /**
      * Get items collection
