@@ -45,7 +45,6 @@ abstract class Jelly_Core_Pagination_Table_Adapter
      */
     protected $_direct;
 
-    
     /**
      * Table action list
      * @var array
@@ -66,30 +65,35 @@ abstract class Jelly_Core_Pagination_Table_Adapter
      */
     public function __construct(Jelly_Builder $source, array $config = null)
     {
-        $this->_target = new Pagination(array(
-            'total_items' => $source->select()->count(),
-            'items_per_page' => isset($config['items_per_page']) ? $config['items_per_page'] : 10,
-        ));
+        $this->_target = new Pagination();
 
         $this->_source = $source;
 
         //merge config
         $this->_config += $this->_target->config_group();
 
+        //merge config
+        if ($config)
+            $this->_config += $config;
 
-
-        $order_how = Request::current()->query('how') ? Request::current()->query('how') : 'DESC';
+        $order_how = isset($this->_config['current_order']) ? Request::current()->query($this->_config['current_order']['key']) : 'DESC';
         $this->_direct = ($order_how == 'DESC') ? 'ASC' : 'DESC';
 
+        $this->_limit = isset($this->_config['current_limit']) ? (Request::current()->query($this->_config['current_limit']['key'])) ? Request::current()->query($this->_config['current_limit']['key']): 10 : 10;
 
-        $this->_sort_column = Request::current()->query('sort');
+
+        $this->_sort_column = Request::current()->query($this->_config['current_sort']['key']);
 
 
+        $this->_target->setup(array(
+            'total_items' => $source->select()->count(),
+            'items_per_page' => $this->_limit,
+        ));
 
         if (!is_null($this->_sort_column))
             $this->_source->order_by($this->_sort_column, $order_how);
-        
-        
+
+
         // Get the current route name
         $current_route = Route::name(Request::initial()->route());
 
@@ -102,7 +106,7 @@ abstract class Jelly_Core_Pagination_Table_Adapter
      */
     public function sort(Jelly_Field $column, $foreign = null)
     {
-        
+
 
         //Current page
         $page = $this->_target->request()->query($this->_config['current_page']['key']);
@@ -138,8 +142,6 @@ abstract class Jelly_Core_Pagination_Table_Adapter
 
         return HTML::anchor($this->_route->uri($this->_target->route_params()) . URL::query($params), $column->label . $arrow, array('class' => $class));
     }
-    
-
 
     /**
      * Get items collection
@@ -147,10 +149,9 @@ abstract class Jelly_Core_Pagination_Table_Adapter
      */
     public function items()
     {
-        return $this->_source->offset($this->_target->offset)->limit(10)->select();
+        return $this->_source->offset($this->_target->offset)->limit($this->_limit)->select();
     }
 
-    
     /**
      * Render pagination nav
      * @param string $view view path
